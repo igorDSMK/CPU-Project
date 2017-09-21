@@ -1,0 +1,27 @@
+PRINT Digite_seu_telefone:
+PRINT 1_para_listar
+PRINT 0_para_sair
+
+GETINT r0
+LOAD r1 10
+COMP r0 1
+JE 18
+JZ 16
+ADD r1 11
+STORE r0 r1
+SUB r1 10
+STORE r1 10
+JUMP 5
+
+RET 0
+
+MOVE r1 11
+LOAD r2 10
+LOAD r0 r1
+ESCREVAL r0
+ADD r1 1
+SUB r2 1
+COMP r2 0
+JE 27
+JUMP 20
+RET 1
