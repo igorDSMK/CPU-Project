@@ -1,4 +1,5 @@
 #include "cpu.h"
+const int total_blocks;
 
 int main(void)
 {
@@ -25,17 +26,19 @@ int main(void)
 
     printf("Tamanho da cache: ");
     scanf("%d", &size_cache);
-    cache_memory = (struct cacheBlock*) malloc(size_cache * sizeof(struct cacheBlock));        //Definição da Cache(Array de blocos de memória cache)
+    cache_memory = (struct cacheLine*) malloc(size_cache * sizeof(struct cacheLine));        //Definição da Cache(Array de blocos de memória cache)
     
     for(int i = 0; i < size_cache; i++)
     {
         cache_memory[i].status = 0;
     }
 
+    block_size = 100/total_blocks;              //Tamanho do bloco = tamanho da memória principal dividido pelo número total de blocos
+
     printf("Nível de Associatividade: ");
     scanf("%d", &associativity);
 
-    fp = fopen("src/teste_cache.txt", "r");
+    fp = fopen("memory/teste_cache.txt", "r");
     fpMemory = fopen("memory.txt", "r");
     if ((fp == NULL) || (fpMemory == NULL))
     {

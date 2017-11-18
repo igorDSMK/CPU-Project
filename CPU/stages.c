@@ -3,6 +3,9 @@
 //registradores globais
 int r[10];
 
+//numero de blocos em memória principal
+const int total_blocks = 20;
+
 //endereço da memória cache
 char adress_cache;
 
@@ -18,43 +21,59 @@ char flag_z,     //zero
 //resto
 int resto;    
 
-char direct_access(char reg_id, char adress)
+char GetBlockNumber(char adress)        //retorna o numero do bloco que o endereço faz parte
 {
-    adress_cache = adress % size_cache;
+    return (adress-1)/block_size;  
+}
 
-    if((cache_memory[adress_cache].status == 1) && (cache_memory[adress_cache].tag == (adress-1)))
-    {   
-        r[reg_id] = cache_memory[adress_cache].content;
-        cacheHit++;
+char DirectAccess(char reg_id, char adress)
+{
+    int word;
+    block_num = GetBlockNumber(adress);             //Recebe o número do bloco
+    adress_cache = block_num % size_cache;          //Mapeia o endereço da memória principal para o endereço da cache
+    int first_position = block_num * block_size;    //Posição do primeiro elemento do bloco na memória principal
 
-        return 'F';
-    }
-    else
+    if(cache_memory[adress_cache].status == 1)
     {
-        cacheMiss++;
-        if(memory_list[adress-1].status)
-        {
-            cache_memory[adress_cache].content = memory_list[adress-1].content;
-            cache_memory[adress_cache].status = 1;
-            cache_memory[adress_cache].tag = (adress-1);
-
-            //printf("Cache: %d \tMemory: %d\n\n", cache_memory[adress_cache].tag, memory_list[adress-1].content);
-
-            r[reg_id] = cache_memory[adress_cache].content;
+        if(cache_memory[adress_cache].tag == block_num)
+        {printf("HIT\n");
+            cacheHit++;
         }
         else
-        {
-            printf("\nInvalid memory access\n");
-            //printf("\nLOAD__Valor : %d, Status: %d\n\n",adress-1, memory_list[adress-1].status);
-            return 'I';
+        {printf("MISS\n");
+            cacheMiss++;
+            cache_memory[adress_cache].tag = block_num;
+
+            for(int i=0; i<block_size; i++)
+            {
+                cache_memory[adress_cache].content[i] = memory_list[(first_position)+i].content;
+            }
         }
-        return 'F';
     }
+    else
+    {printf("MISS\n");
+        cacheMiss++;
+
+        cache_memory[adress_cache].status = 1;
+        cache_memory[adress_cache].tag = block_num;
+        cache_memory[adress_cache].content = (int*) malloc(block_size * sizeof(int));
+
+        for(int i=0; i<block_size; i++)
+        {
+            cache_memory[adress_cache].content[i] = memory_list[(first_position)+i].content;
+        }
+
+    }
+
+    word = adress % block_size;
+
+    r[reg_id] = cache_memory[adress_cache].content[word];
+
+    return 'F';
 }
 
 
-
-char associativity_acess()
+char AssociativityAcess()
 {
     return 'I';
 }
@@ -159,7 +178,7 @@ char Decod(const char * current_command)
 char Exec(struct command current_command, int op, int* inst_pointer)
 {
     char *pEnd;
-    int reg_id, reg_id1, reg_id2, value, adress, arg1, arg2, status, inst_adress;
+    int reg_id, reg_id1, reg_id2, value, adress, arg1, arg2, status, inst_adress, first_position, word;
     //printf("\nInstruction : %s\n", current_command.instruction_part[0]);
 
     switch(op)
@@ -187,11 +206,11 @@ char Exec(struct command current_command, int op, int* inst_pointer)
 
             if(associativity == 0)
             {
-                return direct_access(reg_id, adress);
+                return DirectAccess(reg_id, adress);
             }
             else
             {
-                return associativity_acess();
+                return AssociativityAcess();
             }
             
         case 3:     //STORE
@@ -211,17 +230,30 @@ char Exec(struct command current_command, int op, int* inst_pointer)
 
             if(associativity == 0)
             {
-                adress_cache = adress % size_cache;
+
+                block_num = GetBlockNumber(adress);             //Recebe o número do bloco
+                adress_cache = block_num % size_cache;          //Mapeia o endereço da memória principal para o endereço da cache
+                first_position = block_num * block_size;        //Posição do primeiro elemento do bloco na memória principal
+                word = adress % block_size;
+
                 cache_memory[adress_cache].status = 1;
-                cache_memory[adress_cache].tag = (adress-1);
-                cache_memory[adress_cache].content = r[reg_id];
+                cache_memory[adress_cache].tag = block_num;
+
+                for(int i=0; i<block_size; i++)
+                {
+                    cache_memory[adress_cache].content[i] = memory_list[(first_position)+i].content;
+                }
+
+                cache_memory[adress_cache].content[word] = r[reg_id];
             }
             else
             {
                 ;
             }
 
-            memory_list[adress-1].content = cache_memory[adress_cache].content;
+            
+
+            memory_list[adress-1].content = cache_memory[adress_cache].content[word];
             memory_list[adress-1].status = 1;
 
             return 'F';

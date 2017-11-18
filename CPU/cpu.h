@@ -14,20 +14,21 @@ struct memory
     int content;
 };
 
-struct cacheBlock
+struct cacheLine 
 {
 	char status;
 	char tag;
-	int content;
+	int  *content;
 };
 
 //array de instruções
 struct command instruction_list[100];
 struct memory memory_list[100];
-struct cacheBlock *cache_memory;
+struct cacheLine *cache_memory;
 
 int size_cache, associativity;
 int cacheHit, cacheMiss;
+int block_size, block_num;
 
 char Decod(const char *current_command);
 char Exec(struct command current_command, int op, int *inst_pointer);
