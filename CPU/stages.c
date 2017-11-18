@@ -36,11 +36,13 @@ char DirectAccess(char reg_id, char adress)
     if(cache_memory[adress_cache].status == 1)
     {
         if(cache_memory[adress_cache].tag == block_num)
-        {printf("HIT\n");
+        {
+            printf("HIT\n");
             cacheHit++;
         }
         else
-        {printf("MISS\n");
+        {
+            printf("MISS\n");
             cacheMiss++;
             cache_memory[adress_cache].tag = block_num;
 
@@ -51,7 +53,8 @@ char DirectAccess(char reg_id, char adress)
         }
     }
     else
-    {printf("MISS\n");
+    {
+        printf("MISS\n");
         cacheMiss++;
 
         cache_memory[adress_cache].status = 1;
@@ -73,9 +76,65 @@ char DirectAccess(char reg_id, char adress)
 }
 
 
-char AssociativityAcess()
+char AssociativityAcess(char reg_id, char adress)
 {
-    return 'I';
+    int word = adress % block_size;
+    block_num = GetBlockNumber(adress);
+    int wasHit = 0;
+    int gotIn = 0;
+    int first_position = block_num * block_size;
+
+    for(int chacheLine = 0; chacheLine < size_cache; ++cacheLine)                               //para cada linha de cache
+    {
+        if(cache_memory[chacheLine].status == 1 && cache_memory[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
+        {
+            printf("HIT\n");
+            cacheHit++;
+            wasHit = 1;
+            r[reg_id] = cache_memory[cacheLine].content[word];
+            return 'I';                                                                              //encontrou na cache, return
+        }
+    }
+
+    if(!wasHit)                                                                                 //se houve miss
+    {
+        printf("MISS\n");
+        cacheMiss++;
+        for(int chacheLine = 0; chacheLine < size_cache; ++cacheLine)                           //procura primeira linha vazia
+        {
+            if(cache_memory[chacheLine].status == 0)                                            //na primeira vazia que encontrar
+            {
+                cache_memory[chacheLine].status = 1;                                            //atualiza as propriedades da linha e 
+                cache_memory[chacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
+                cache_memory[chacheLine].content = (int*) malloc(block_size * sizeof(int));
+        
+                for(int i = 0; i < block_size; i++)
+                {
+                    cache_memory[chacheLine].content[i] = memory_list[(first_position)+i].content;
+                }
+
+                gotIn = 1;                                                                      //cache tinha espaço vazio e bloco foi colocado nela
+                r[reg_id] = cache_memory[cacheLine].content[word];
+                return 'I';
+            }
+        }
+    }
+
+    if(!gotIn)                                                                                  //se cache nao tinha espaço livre, substituir posição
+    {
+        int victimLine = rand() / (RAND_MAX / size_cache + 1);
+
+        cache_memory[victimLine].tag = block_num;
+
+        for(int i = 0; i < block_size; i++)
+        {
+            cache_memory[victimLine].content[i] = memory_list[(first_position)+i].content;      //atualiza cache
+        }
+
+        r[reg_id] = cache_memory[victimLine].content[word];
+
+        return 'I';
+    }    
 }
 
 char Decod(const char * current_command)
@@ -208,9 +267,13 @@ char Exec(struct command current_command, int op, int* inst_pointer)
             {
                 return DirectAccess(reg_id, adress);
             }
-            else
+            else if(associativity == 1)
             {
-                return AssociativityAcess();
+                return AssociativityAcess(reg_id, adress);
+            }
+            else if(associativity >= 2)
+            {
+                //TODO
             }
             
         case 3:     //STORE

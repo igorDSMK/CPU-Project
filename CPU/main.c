@@ -33,7 +33,7 @@ int main(void)
         cache_memory[i].status = 0;
     }
 
-    block_size = 100/total_blocks;              //Tamanho do bloco = tamanho da memória principal dividido pelo número total de blocos
+    block_size = 100/total_blocks;              //Tamanho do bloco = tamanho da memória principal / número total de blocos
 
     printf("Nível de Associatividade: ");
     scanf("%d", &associativity);
