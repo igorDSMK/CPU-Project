@@ -76,7 +76,7 @@ char DirectAccess(char reg_id, char adress)
 }
 
 
-char AssociativityAcess(char reg_id, char adress)
+char AssociativityAccess(char reg_id, char adress)
 {
     int word = adress % block_size;
     block_num = GetBlockNumber(adress);
@@ -84,15 +84,15 @@ char AssociativityAcess(char reg_id, char adress)
     int gotIn = 0;
     int first_position = block_num * block_size;
 
-    for(int chacheLine = 0; chacheLine < size_cache; ++cacheLine)                               //para cada linha de cache
+    for(int cacheLine = 0; cacheLine < size_cache; ++cacheLine)                               //para cada linha de cache
     {
-        if(cache_memory[chacheLine].status == 1 && cache_memory[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
+        if(cache_memory[cacheLine].status == 1 && cache_memory[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
         {
             printf("HIT\n");
             cacheHit++;
             wasHit = 1;
             r[reg_id] = cache_memory[cacheLine].content[word];
-            return 'I';                                                                              //encontrou na cache, return
+            return 'F';                                                                              //encontrou na cache, return
         }
     }
 
@@ -100,22 +100,22 @@ char AssociativityAcess(char reg_id, char adress)
     {
         printf("MISS\n");
         cacheMiss++;
-        for(int chacheLine = 0; chacheLine < size_cache; ++cacheLine)                           //procura primeira linha vazia
+        for(int cacheLine = 0; cacheLine < size_cache; ++cacheLine)                           //procura primeira linha vazia
         {
-            if(cache_memory[chacheLine].status == 0)                                            //na primeira vazia que encontrar
+            if(cache_memory[cacheLine].status == 0)                                            //na primeira vazia que encontrar
             {
-                cache_memory[chacheLine].status = 1;                                            //atualiza as propriedades da linha e 
-                cache_memory[chacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
-                cache_memory[chacheLine].content = (int*) malloc(block_size * sizeof(int));
+                cache_memory[cacheLine].status = 1;                                            //atualiza as propriedades da linha e 
+                cache_memory[cacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
+                cache_memory[cacheLine].content = (int*) malloc(block_size * sizeof(int));
         
                 for(int i = 0; i < block_size; i++)
                 {
-                    cache_memory[chacheLine].content[i] = memory_list[(first_position)+i].content;
+                    cache_memory[cacheLine].content[i] = memory_list[(first_position)+i].content;
                 }
 
                 gotIn = 1;                                                                      //cache tinha espaço vazio e bloco foi colocado nela
                 r[reg_id] = cache_memory[cacheLine].content[word];
-                return 'I';
+                return 'F';
             }
         }
     }
@@ -133,7 +133,7 @@ char AssociativityAcess(char reg_id, char adress)
 
         r[reg_id] = cache_memory[victimLine].content[word];
 
-        return 'I';
+        return 'F';
     }    
 }
 
@@ -269,7 +269,7 @@ char Exec(struct command current_command, int op, int* inst_pointer)
             }
             else if(associativity == 1)
             {
-                return AssociativityAcess(reg_id, adress);
+                return AssociativityAccess(reg_id, adress);
             }
             else if(associativity >= 2)
             {
