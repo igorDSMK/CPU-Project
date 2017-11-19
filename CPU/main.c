@@ -38,6 +38,23 @@ int main(void)
     printf("Nível de Associatividade: ");
     scanf("%d", &associativity);
 
+    if(associativity >= 2)
+    {
+        cacheset_memory = (struct cacheSet*) malloc(size_cache * sizeof(struct cacheSet));              //seta os sets(tamanho da cache)
+
+        for(int i = 0; i < associativity; ++i)
+        {
+            cacheset_memory[i].lines = (struct cacheline*) malloc(associativity * sizeof(struct cacheLine));  //seta as linhas de cada set(associativiadde)
+        }
+        for(int j = 0; j < size_cache; ++j)
+        {
+            for(int i = 0; i < associativity; i++)
+            {
+                cacheset_memory[j].lines[i].status = 0;
+            }
+        }
+    }
+
     fp = fopen("memory/teste_cache.txt", "r");
     fpMemory = fopen("memory.txt", "r");
     if ((fp == NULL) || (fpMemory == NULL))

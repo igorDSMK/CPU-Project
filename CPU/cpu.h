@@ -21,10 +21,16 @@ struct cacheLine
 	int  *content;
 };
 
+struct cacheSet
+{
+    struct cacheLine *lines;
+};
+
 //array de instruções
 struct command instruction_list[100];
 struct memory memory_list[100];
 struct cacheLine *cache_memory;
+struct cacheSet *cacheset_memory;
 
 int size_cache, associativity;
 int cacheHit, cacheMiss;

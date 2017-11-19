@@ -8,6 +8,7 @@ const int total_blocks = 20;
 
 //endereço da memória cache
 char adress_cache;
+char cacheset_address;
 
 //flags
 char flag_z,     //zero
@@ -135,6 +136,68 @@ char AssociativityAccess(char reg_id, char adress)
 
         return 'F';
     }    
+}
+
+char setAssociativityAccess(char reg_id, char adress, int associativity)
+{
+    int word = adress % block_size;
+    block_num = GetBlockNumber(adress);
+    int wasHit = 0;
+    int gotIn = 0;
+    cacheset_address = block_num % size_cache;             //Mapeia o endereço da memória principal para um set da cache
+    int first_position = block_num * block_size;    //Posição do primeiro elemento do bloco na memória principal
+
+    for(int cacheLine = 0; cacheLine < associativity; ++cacheLine)                               //para cada linha de cache do set
+    {
+        if(cacheset_memory[cacheset_address].lines[cacheLine].status == 1 && cacheset_memory[cacheset_address].lines[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
+        {
+            printf("HIT\n");
+            cacheHit++;
+            wasHit = 1;
+            r[reg_id] = cacheset_memory[cacheset_address].lines[cacheLine].content[word];
+            return 'F';                                                                              //encontrou na cache, return
+        }
+    }
+
+    if(!wasHit)                                                                                 //se houve miss
+    {
+        printf("MISS\n");
+        cacheMiss++;
+        for(int cacheLine = 0; cacheLine < associativity; ++cacheLine)                           //procura primeira linha vazia
+        {
+            if(cacheset_memory[cacheset_address].lines[cacheLine].status == 0)                                            //na primeira vazia que encontrar
+            {
+                cacheset_memory[cacheset_address].lines[cacheLine].status = 1;                                            //atualiza as propriedades da linha e 
+                cacheset_memory[cacheset_address].lines[cacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
+                cacheset_memory[cacheset_address].lines[cacheLine].content = (int*) malloc(block_size * sizeof(int));
+        
+                for(int i = 0; i < block_size; i++)
+                {
+                    cacheset_memory[cacheset_address].lines[cacheLine].content[i] = memory_list[(first_position)+i].content;
+                }
+
+                gotIn = 1;                                                                      //cache tinha espaço vazio e bloco foi colocado nela
+                r[reg_id] = cacheset_memory[cacheset_address].lines[cacheLine].content[word];
+                return 'F';
+            }
+        }
+    }
+
+    if(!gotIn)                                                                                  //se cache nao tinha espaço livre, substituir posição
+    {
+        int victimLine = rand() / (RAND_MAX / associativity + 1);
+
+        cacheset_memory[cacheset_address].lines[victimLine].tag = block_num;
+
+        for(int i = 0; i < block_size; i++)
+        {
+            cacheset_memory[cacheset_address].lines[victimLine].content[i] = memory_list[(first_position)+i].content;      //atualiza cache
+        }
+
+        r[reg_id] = cacheset_memory[cacheset_address].lines[victimLine].content[word];
+
+        return 'F';
+    }   
 }
 
 char Decod(const char * current_command)
@@ -273,7 +336,7 @@ char Exec(struct command current_command, int op, int* inst_pointer)
             }
             else if(associativity >= 2)
             {
-                //TODO
+                return setAssociativityAccess(reg_id, adress, associativity);
             }
             
         case 3:     //STORE
@@ -308,16 +371,134 @@ char Exec(struct command current_command, int op, int* inst_pointer)
                 }
 
                 cache_memory[adress_cache].content[word] = r[reg_id];
+
+                memory_list[adress-1].content = cache_memory[adress_cache].content[word];
+                memory_list[adress-1].status = 1;
             }
-            else
+            else if(associativity == 1)
             {
-                ;
-            }
-
+                int word = adress % block_size;
+                block_num = GetBlockNumber(adress);
+                int wasHit = 0;
+                int gotIn = 0;
+                int first_position = block_num * block_size;
             
+                for(int cacheLine = 0; cacheLine < size_cache; ++cacheLine)                               //para cada linha de cache
+                {
+                    if(cache_memory[cacheLine].status == 1 && cache_memory[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
+                    {  
+                        wasHit = 1;
+                        cache_memory[cacheLine].content[word] = r[reg_id];
+                        
+                        memory_list[adress-1].content = cache_memory[cacheLine].content[word];
+                        memory_list[adress-1].status = 1;
+                    }
+                }
+            
+                if(!wasHit)                                                                                 //se houve miss
+                {                    
+                    for(int cacheLine = 0; cacheLine < size_cache; ++cacheLine)                           //procura primeira linha vazia
+                    {
+                        if(cache_memory[cacheLine].status == 0)                                            //na primeira vazia que encontrar
+                        {
+                            cache_memory[cacheLine].status = 1;                                            //atualiza as propriedades da linha e 
+                            cache_memory[cacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
+                            cache_memory[cacheLine].content = (int*) malloc(block_size * sizeof(int));
+                    
+                            for(int i = 0; i < block_size; i++)
+                            {
+                                cache_memory[cacheLine].content[i] = memory_list[(first_position)+i].content;
+                            }
+            
+                            gotIn = 1;                                                                      //cache tinha espaço vazio e bloco foi colocado nela
+                            cache_memory[cacheLine].content[word] = r[reg_id];   
+                            
+                            memory_list[adress-1].content = cache_memory[cacheLine].content[word];
+                            memory_list[adress-1].status = 1;
+                        }
+                    }
+                }
+            
+                if(!gotIn)                                                                                  //se cache nao tinha espaço livre, substituir posição
+                {
+                    int victimLine = rand() / (RAND_MAX / size_cache + 1);
+            
+                    cache_memory[victimLine].tag = block_num;
+            
+                    for(int i = 0; i < block_size; i++)
+                    {
+                        cache_memory[victimLine].content[i] = memory_list[(first_position)+i].content;      //atualiza cache
+                    }
+            
+                    cache_memory[victimLine].content[word] = r[reg_id]; 
 
-            memory_list[adress-1].content = cache_memory[adress_cache].content[word];
-            memory_list[adress-1].status = 1;
+                    memory_list[adress-1].content = cache_memory[victimLine].content[word];
+                    memory_list[adress-1].status = 1;
+                }
+            }
+            else if(associativity >= 2)
+            {
+                int word = adress % block_size;
+                block_num = GetBlockNumber(adress);
+                int wasHit = 0;
+                int gotIn = 0;
+                cacheset_address = block_num % size_cache;             //Mapeia o endereço da memória principal para um set da cache
+                int first_position = block_num * block_size;    //Posição do primeiro elemento do bloco na memória principal
+            
+            
+                for(int cacheLine = 0; cacheLine < associativity; ++cacheLine)                               //para cada linha de cache
+                {
+                    if(cacheset_memory[cacheset_address].lines[cacheLine].status == 1 && cacheset_memory[cacheset_address].lines[cacheLine].tag == block_num)    //verifica se está utilizada e o tag bate com o block_num
+                    {
+                        wasHit = 1;
+                        cacheset_memory[cacheset_address].lines[cacheLine].content[word] = r[reg_id];
+                        
+                        memory_list[adress-1].content = cacheset_memory[cacheset_address].lines[cacheLine].content[word];
+                        memory_list[adress-1].status = 1;
+                    }
+                }
+            
+                if(!wasHit)                                                                                 //se houve miss
+                {                    
+                    for(int cacheLine = 0; cacheLine < associativity; ++cacheLine)                           //procura primeira linha vazia
+                    {
+                        if(cacheset_memory[cacheset_address].lines[cacheLine].status == 0)                                            //na primeira vazia que encontrar
+                        {
+                            cacheset_memory[cacheset_address].lines[cacheLine].status = 1;                                            //atualiza as propriedades da linha e 
+                            cacheset_memory[cacheset_address].lines[cacheLine].tag = block_num;                                       //preenche linha com o conteudo do bloco de mem
+                            cacheset_memory[cacheset_address].lines[cacheLine].content = (int*) malloc(block_size * sizeof(int));
+                    
+                            for(int i = 0; i < block_size; i++)
+                            {
+                                cacheset_memory[cacheset_address].lines[cacheLine].content[i] = memory_list[(first_position)+i].content;
+                            }
+            
+                            gotIn = 1;                                                                      //cache tinha espaço vazio e bloco foi colocado nela
+                            cacheset_memory[cacheset_address].lines[cacheLine].content[word] = r[reg_id];   
+                            
+                            memory_list[adress-1].content = cacheset_memory[cacheset_address].lines[cacheLine].content[word];
+                            memory_list[adress-1].status = 1;
+                        }
+                    }
+                }
+            
+                if(!gotIn)                                                                                  //se cache nao tinha espaço livre, substituir posição
+                {
+                    int victimLine = rand() / (RAND_MAX / associativity + 1);
+                    
+                    cacheset_memory[cacheset_address].lines[victimLine].tag = block_num;
+                    
+                    for(int i = 0; i < block_size; i++)
+                    {
+                        cacheset_memory[cacheset_address].lines[victimLine].content[i] = memory_list[(first_position)+i].content;      //atualiza cache
+                    }
+            
+                    cacheset_memory[cacheset_address].lines[victimLine].content[word] = r[reg_id]; 
+
+                    memory_list[adress-1].content =  cacheset_memory[cacheset_address].lines[victimLine].content[word];
+                    memory_list[adress-1].status = 1;
+                }
+            }           
 
             return 'F';
 
