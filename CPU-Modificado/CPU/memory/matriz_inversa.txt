@@ -1,0 +1,25 @@
+PRINT Tamanho_da_Matriz 
+GETINT r0
+MOVE r1 1
+MOVE r2 0
+MOVE r7 0
+ADD r2 1
+COMP r2 r0
+SUB r2 1
+JG 19
+COPY r8 r2
+MUL r8 r0
+ADD r8 r1
+ESCREVAL r8
+LOAD r9 r8
+ADD r7 r9
+ADD r2 1
+JUMP 6
+
+COMP r1 r0
+JE 25
+ADD r1 1
+MOVE r2 0
+JUMP 6
+
+RET 0

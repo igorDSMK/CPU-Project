@@ -1,0 +1,18 @@
+PRINT Adivinhe!
+LOAD r0 1
+MOVE r2 0
+GETINT  r1
+ADD r2 1
+COMP r1 r0
+JG 10
+JL 12
+JE 14
+PRINT Menos!
+JUMP 4
+PRINT Mais!
+JUMP 4
+PRINT Acertou!
+PRINT Tentativas:
+ESCREVAL r2
+STORE r2 1
+RET 1
