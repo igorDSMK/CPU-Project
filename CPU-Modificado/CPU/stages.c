@@ -201,7 +201,7 @@ inline char setAssociativityAccess(const char* reg_id, const char* address, cons
     }
 }
 
-inline char Decod(const char* current_command)
+char Decod(const char* current_command)
 {
     if(strcmp(current_command, "MOVE") == 0)                //coloca inteiro no registrador
     {
